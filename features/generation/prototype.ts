@@ -55,9 +55,23 @@ export function classifyComponent(component: string): BlockKind {
   return "generic";
 }
 
+function toWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((word) => word.length > 2);
+}
+
+/** Singular/plural tolerant word match. */
+function wordsMatch(a: string, b: string): boolean {
+  return a.startsWith(b.replace(/s$/, "")) || b.startsWith(a.replace(/s$/, ""));
+}
+
 /**
- * Finds the data model most related to a page by counting shared words
- * between the model name and the page's name and components.
+ * Finds the data model most related to a page. Words from the page name and
+ * components weigh more than words from the purpose text, and model
+ * descriptions are considered so e.g. "Book a visit" matches an Appointment
+ * model described as "a scheduled visit".
  */
 export function matchDataModel(
   blueprint: ProjectBlueprint,
@@ -65,30 +79,29 @@ export function matchDataModel(
 ): ProjectBlueprint["dataModels"][number] | null {
   if (blueprint.dataModels.length === 0) return null;
 
-  const haystack = `${page.name} ${page.purpose} ${page.components.join(" ")}`
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter((word) => word.length > 2);
+  const weighted: Array<{ word: string; weight: number }> = [
+    ...toWords(`${page.name} ${page.components.join(" ")}`).map((word) => ({
+      word,
+      weight: 2,
+    })),
+    ...toWords(page.purpose).map((word) => ({ word, weight: 1 })),
+  ];
 
   let best = blueprint.dataModels[0];
   let bestScore = -1;
 
   for (const model of blueprint.dataModels) {
-    const words = model.name
-      .toLowerCase()
-      .split(/[^a-z]+/)
-      .filter((word) => word.length > 2);
+    const modelWords = new Set([
+      ...toWords(model.name),
+      ...toWords(model.description),
+    ]);
     let score = 0;
-    for (const word of words) {
-      // Singular/plural tolerant containment match.
-      if (
-        haystack.some(
-          (candidate) =>
-            candidate.startsWith(word.replace(/s$/, "")) ||
-            word.startsWith(candidate.replace(/s$/, "")),
-        )
-      ) {
-        score += 1;
+    for (const modelWord of modelWords) {
+      for (const { word, weight } of weighted) {
+        if (wordsMatch(word, modelWord)) {
+          score += weight;
+          break;
+        }
       }
     }
     if (score > bestScore) {

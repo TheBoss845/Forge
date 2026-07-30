@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { getAppUrl } from "@/lib/utilities/app-url";
 
 import "./globals.css";
 
@@ -15,13 +16,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "Forge interviews you, designs your system, creates the application, and helps you launch it. AI software engineering for every business.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(getAppUrl()),
   title: {
     default: "Forge — Describe your business. Forge builds the software.",
     template: "%s · Forge",
   },
-  description:
-    "Forge interviews you, designs your system, creates the application, and helps you launch it. AI software engineering for every business.",
+  description,
+  openGraph: {
+    type: "website",
+    siteName: "Forge",
+    title: "Forge — Describe your business. Forge builds the software.",
+    description,
+  },
+  twitter: {
+    card: "summary",
+    title: "Forge — Describe your business. Forge builds the software.",
+    description,
+  },
 };
 
 export default function RootLayout({

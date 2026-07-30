@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PrototypePreview } from "@/components/builder/prototype-preview";
+import { DownloadExampleButton } from "@/components/marketing/download-example-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -38,6 +39,9 @@ export default function DemoPage() {
 
       <div className="mx-auto mt-10 max-w-5xl">
         <PrototypePreview blueprint={EXAMPLE_BLUEPRINT} />
+        <div className="mt-8 text-center">
+          <DownloadExampleButton />
+        </div>
       </div>
 
       <div className="mx-auto mt-12 max-w-2xl text-center">

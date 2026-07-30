@@ -13,6 +13,7 @@ import {
   type ProjectBlueprint,
 } from "@/features/blueprints/schema";
 import { cn } from "@/lib/utilities/cn";
+import { downloadBlueprintZip } from "@/lib/utilities/download-blueprint";
 
 export function GuestBlueprintView({
   blueprint,
@@ -33,31 +34,8 @@ export function GuestBlueprintView({
   const download = async () => {
     setError(null);
     setDownloading(true);
-    try {
-      const response = await fetch("/api/guest/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprint }),
-      });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        setError(data?.error ?? "Download failed. Please try again.");
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${blueprint.projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.zip`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      setError("Download failed. Check your connection and try again.");
-    } finally {
-      setDownloading(false);
-    }
+    setError(await downloadBlueprintZip(blueprint));
+    setDownloading(false);
   };
 
   return (

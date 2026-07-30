@@ -125,7 +125,7 @@ export function BlueprintWorkspace({
         setError(result.error);
       } else {
         setNotice(
-          "Blueprint approved. Application generation is the next phase of Forge and is not available yet — your approved plan is saved and ready for it.",
+          "Blueprint approved. Head to the Code tab to generate your application from it.",
         );
         router.refresh();
       }

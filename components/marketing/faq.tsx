@@ -10,7 +10,7 @@ const faqs = [
   {
     question: "What can Forge build today?",
     answer:
-      "Right now Forge runs the full planning experience: it interviews you about your business and produces a detailed, editable project blueprint. Application generation from approved blueprints is the next phase and is clearly marked as such inside the product — Forge never pretends a feature exists before it does.",
+      "Forge interviews you, produces a detailed editable blueprint, renders an interactive prototype of your application, and generates a complete runnable starter codebase from the blueprint — pages, navigation, typed data models, sample data, and a ready-to-apply database schema. You can download it, deploy it, and modify files by asking Forge in plain language. The starter uses clearly-labeled sample data until you connect a database; Forge never pretends a feature exists before it does.",
   },
   {
     question: "Will Forge build whatever I ask for?",

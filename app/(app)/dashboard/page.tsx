@@ -117,9 +117,10 @@ export default async function DashboardPage() {
               and workflows.
             </li>
             <li>
-              <span className="font-medium text-primary">3. Build.</span> Once
-              you approve the blueprint, Forge generates the application. This
-              phase is coming soon and is clearly marked in the product.
+              <span className="font-medium text-primary">3. Build.</span>{" "}
+              Approve the blueprint and Forge generates a runnable starter
+              codebase — preview it, download it, and modify it by asking Forge
+              in plain language.
             </li>
           </ol>
         </CardContent>

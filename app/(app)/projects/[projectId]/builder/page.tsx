@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PrototypePreview } from "@/components/builder/prototype-preview";
 import { ProjectPageHeader } from "@/components/projects/project-page-header";
+import { ProjectTabs } from "@/components/projects/project-tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { projectBlueprintSchema } from "@/features/blueprints/schema";
@@ -40,6 +41,7 @@ export default async function BuilderPage({
           project={project}
           subtitle="Preview how your planned application will work."
         />
+        <ProjectTabs projectId={project.id} />
         <Card className="mt-8">
           <CardContent className="flex flex-col items-center py-14 text-center">
             <span className="flex size-12 items-center justify-center rounded-full bg-accent-muted">
@@ -80,20 +82,19 @@ export default async function BuilderPage({
             <Hammer className="size-5 text-accent" aria-hidden="true" />
           </span>
           <div className="flex-1">
-            <h2 className="text-card-title text-primary">What happens next</h2>
+            <h2 className="text-card-title text-primary">Like what you see?</h2>
             <p className="mt-1 text-body-sm text-secondary">
-              Code generation — turning this prototype into a real, deployable
-              application — is the next phase of Forge and is not available yet.
-              Your blueprint is saved and versioned; it will be the direct input
-              when generation ships. Nothing on this page is simulated: the
-              prototype above is honestly derived from your plan.
+              Generate the real starter codebase from this blueprint in the Code
+              tab: every page, typed data models, sample data, and a
+              ready-to-apply database schema. Download it, run it, and modify it
+              — by hand or by asking Forge.
             </p>
           </div>
           <Link
-            href={`/projects/${project.id}/blueprint`}
-            className={buttonVariants({ variant: "secondary", size: "sm" })}
+            href={`/projects/${project.id}/code`}
+            className={buttonVariants({ size: "sm" })}
           >
-            Edit blueprint
+            Generate the code
           </Link>
         </CardContent>
       </Card>

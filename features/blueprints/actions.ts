@@ -17,20 +17,16 @@ import {
   generateBlueprint,
   reviseBlueprint,
 } from "@/features/blueprints/service";
-import { getProject } from "@/features/projects/queries";
+import {
+  loadProjectContext,
+  type ProjectActionContext,
+} from "@/features/projects/server-context";
 import { getAiProvider } from "@/lib/ai";
 import { recordAiUsage } from "@/lib/ai/usage";
 import { trackEvent } from "@/lib/analytics/events";
-import { createSupabaseServerClient } from "@/lib/database/server";
 import { AI_RATE_LIMIT, checkRateLimit } from "@/lib/security/rate-limit";
 import type { ChatMessage, CompletionResult } from "@/lib/ai/types";
-import type {
-  BlueprintRow,
-  InterviewMessageRow,
-  OrganizationRow,
-  ProjectRow,
-} from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BlueprintRow, InterviewMessageRow } from "@/types/database";
 
 export interface BlueprintActionResult {
   error?: string;
@@ -39,41 +35,9 @@ export interface BlueprintActionResult {
 const AI_NOT_CONFIGURED_ERROR =
   "Blueprint generation needs an AI provider. The site owner must set AI_PROVIDER, AI_MODEL, and AI_API_KEY.";
 
-interface ActionContext {
-  supabase: SupabaseClient;
-  userId: string;
-  project: ProjectRow;
-  organization: OrganizationRow;
-}
+type ActionContext = ProjectActionContext;
 
-async function loadContext(
-  projectId: string,
-): Promise<ActionContext | { error: string }> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return { error: "Forge is not connected to a database yet." };
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Your session expired. Please sign in again." };
-
-  const project = await getProject(supabase, projectId);
-  if (!project) return { error: "Project not found." };
-
-  const { data: organization } = await supabase
-    .from("organizations")
-    .select("*")
-    .eq("id", project.organization_id)
-    .maybeSingle();
-  if (!organization) return { error: "Organization not found." };
-
-  return {
-    supabase,
-    userId: user.id,
-    project,
-    organization: organization as OrganizationRow,
-  };
-}
+const loadContext = loadProjectContext;
 
 async function saveBlueprintVersion(
   context: ActionContext,

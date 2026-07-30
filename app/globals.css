@@ -141,6 +141,27 @@
     0 4px 6px -1px rgb(0 0 0 / 0.07), 0 10px 20px -6px rgb(0 0 0 / 0.08);
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.21, 0.47, 0.32, 0.98) both;
+}
+
+/* Subtle dot-grid texture for hero surfaces. */
+@utility bg-dot-grid {
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
 @layer base {
   * {
     border-color: var(--border-subtle);

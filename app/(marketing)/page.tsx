@@ -6,19 +6,20 @@ import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { PricingPreview } from "@/components/marketing/pricing-preview";
 import { SecuritySection } from "@/components/marketing/security-section";
-import { isSupabaseConfigured } from "@/lib/database/env";
+import { getAccountsMode } from "@/lib/utilities/capabilities";
 
 export default function HomePage() {
+  const guestOnly = getAccountsMode() === "none";
   return (
     <>
-      <Hero guestOnly={!isSupabaseConfigured()} />
+      <Hero guestOnly={guestOnly} />
       <HowItWorks />
       <ExampleApps />
       <Benefits />
       <SecuritySection />
       <PricingPreview />
       <Faq />
-      <FinalCta guestOnly={!isSupabaseConfigured()} />
+      <FinalCta guestOnly={guestOnly} />
     </>
   );
 }

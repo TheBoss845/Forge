@@ -4,6 +4,7 @@ import { GuestWorkspace } from "@/components/guest/guest-workspace";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { isAiConfigured } from "@/lib/ai";
+import { getAccountsMode } from "@/lib/utilities/capabilities";
 
 export const metadata: Metadata = {
   title: "Try Forge",
@@ -27,7 +28,10 @@ export default function TryPage() {
           downloadable starter codebase. Your progress stays in this browser.
         </p>
       </div>
-      <GuestWorkspace aiConfigured={isAiConfigured()} />
+      <GuestWorkspace
+        aiConfigured={isAiConfigured()}
+        accountsMode={getAccountsMode() === "local" ? "local" : "none"}
+      />
     </Container>
   );
 }

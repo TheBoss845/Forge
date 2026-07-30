@@ -6,24 +6,32 @@ tier — you can launch without paying anything.
 
 ## The 15-minute version: OpenAI key only, no database
 
-Forge has a full **guest mode**: visitors go to `/try`, answer the AI
-interview, get their blueprint and interactive prototype, and download their
-starter code — all without accounts. Their progress is saved in their own
-browser. When Forge detects that no database is configured, the whole site
-automatically points people to this experience.
+With exactly ONE secret, a Forge deployment on Netlify gives visitors the
+full experience — **including working sign-up and sign-in**:
 
-For this you need exactly ONE secret:
+- Visitors can use Forge instantly with no account (`/try`), with projects
+  saved in their own browser.
+- Visitors can also **create a real account** (email + password) and their
+  projects follow them to any device they sign in on. This works because
+  Forge uses Netlify's built-in storage (Netlify Blobs) — part of the
+  hosting platform itself, nothing extra to sign up for, on the free tier.
+- Passwords are properly hashed (never stored readable); sessions are
+  secure cookies. Honest limitation: password-reset emails are not
+  available in this mode (that needs an email service), and the sign-in
+  pages say so.
+
+Steps:
 
 1. Get an OpenAI API key (Part 2 below, ~5 minutes).
 2. Deploy to Netlify (Part 3 below, ~10 minutes) and add just one
    environment variable: name it `OPENAI_API_KEY` (or `AI_API_KEY` — both
    work), value = your key. Forge assumes OpenAI and the `gpt-4o` model
    unless you also set `AI_PROVIDER` / `AI_MODEL`.
-3. Deploy. Done — a real, working AI product.
+3. Deploy. Done — a real, working AI product with working accounts.
 
-Add **Supabase** later (Part 1) whenever you want visitor accounts, saved
-projects, teams, and the full workspace. Nothing breaks in the meantime;
-Forge simply unlocks those features when the keys appear.
+Add **Supabase** later (Part 1) whenever you want the full cloud workspace
+(organizations, the dashboard, password reset, teams). Nothing breaks in
+the meantime; Forge upgrades itself when the keys appear.
 
 ---
 

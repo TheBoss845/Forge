@@ -69,7 +69,17 @@ function getStoreSnapshot(): GuestStore {
 type StoreUpdater =
   GuestStore | ((previous: GuestStore | null) => GuestStore | null);
 
-export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
+interface AccountInfo {
+  email: string;
+}
+
+export function GuestWorkspace({
+  aiConfigured,
+  accountsMode = "none",
+}: {
+  aiConfigured: boolean;
+  accountsMode?: "local" | "none";
+}) {
   const persisted = useSyncExternalStore(
     emptySubscribe,
     getStoreSnapshot,
@@ -88,13 +98,68 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"turn" | "blueprint" | null>(null);
+  const [account, setAccount] = useState<AccountInfo | null>(null);
   const openingRequestedForRef = useRef<string | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!store) return;
     storeSnapshot = store;
     saveGuestStore(store);
-  }, [store]);
+
+    // Debounced server sync for signed-in accounts.
+    if (account) {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        void fetch("/api/account/workspace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(store),
+        }).catch(() => {
+          // Sync is best-effort; local persistence is the safety net.
+        });
+      }, 800);
+    }
+  }, [store, account]);
+
+  // Check for a signed-in account and adopt its synced workspace.
+  useEffect(() => {
+    if (accountsMode !== "local") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/account/workspace");
+        const data = (await response.json()) as {
+          authenticated?: boolean;
+          email?: string;
+          store?: GuestStore | null;
+        };
+        if (cancelled || !data.authenticated || !data.email) return;
+        setAccount({ email: data.email });
+        if (data.store && Array.isArray(data.store.projects)) {
+          if (data.store.projects.length > 0) {
+            // The account's workspace wins over this device's copy.
+            setStore({ ...data.store, activeProjectId: null });
+          } else {
+            // First sign-in on a device with existing local work: push it up.
+            const local = storeSnapshot ?? loadGuestStore();
+            if (local.projects.length > 0) {
+              void fetch("/api/account/workspace", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(local),
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Stay in device-only mode on any failure.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountsMode, setStore]);
 
   const activeProject =
     store?.projects.find((project) => project.id === store.activeProjectId) ??
@@ -260,10 +325,46 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
     );
   }
 
+  const accountBar =
+    accountsMode === "local" ? (
+      <div className="mx-auto mb-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-border-subtle bg-surface px-4 py-2 text-body-sm">
+        {account ? (
+          <>
+            <span className="text-secondary">
+              Signed in as{" "}
+              <span className="font-medium text-primary">{account.email}</span>{" "}
+              — projects sync to your account.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setAccount(null);
+                void fetch("/api/account/session", { method: "DELETE" }).then(
+                  () => window.location.reload(),
+                );
+              }}
+              className="rounded-md text-accent hover:underline"
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <span className="text-secondary">
+            Saved on this device.{" "}
+            <a href="/login" className="text-accent hover:underline">
+              Sign in
+            </a>{" "}
+            to sync your projects across devices.
+          </span>
+        )}
+      </div>
+    ) : null;
+
   // Start form (first project, or creating another one).
   if (creating || store.projects.length === 0) {
     return (
       <div>
+        {accountBar}
         {store.projects.length > 0 ? (
           <button
             type="button"
@@ -307,6 +408,7 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
   if (!activeProject) {
     return (
       <div className="mx-auto max-w-3xl">
+        {accountBar}
         <div className="flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-section-title text-primary">
             <FolderKanban className="size-5 text-accent" aria-hidden="true" />
@@ -318,7 +420,9 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
           </Button>
         </div>
         <p className="mt-1 text-body-sm text-muted">
-          Saved on this device — no account needed.
+          {account
+            ? "Synced to your account."
+            : "Saved on this device — no account needed."}
         </p>
         <ul className="mt-6 grid gap-4 sm:grid-cols-2">
           {store.projects.map((project) => (

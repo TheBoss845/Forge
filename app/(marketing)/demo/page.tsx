@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { EXAMPLE_BLUEPRINT } from "@/features/blueprints/example";
-import { isSupabaseConfigured } from "@/lib/database/env";
+import { getAccountsMode } from "@/lib/utilities/capabilities";
 import { cn } from "@/lib/utilities/cn";
 
 export const metadata: Metadata = {
@@ -54,10 +54,10 @@ export default function DemoPage() {
           built.
         </p>
         <Link
-          href={isSupabaseConfigured() ? "/register" : "/try"}
+          href={getAccountsMode() === "none" ? "/try" : "/register"}
           className={cn(buttonVariants({ size: "lg" }), "mt-6")}
         >
-          {isSupabaseConfigured() ? "Start building" : "Try Forge now"}
+          {getAccountsMode() === "none" ? "Try Forge now" : "Start building"}
           <ArrowRight aria-hidden="true" />
         </Link>
       </div>

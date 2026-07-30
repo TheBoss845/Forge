@@ -1,6 +1,6 @@
 import { SiteFooter } from "@/components/layout/site-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { isSupabaseConfigured } from "@/lib/database/env";
+import { getAccountsMode } from "@/lib/utilities/capabilities";
 
 export default function MarketingLayout({
   children,
@@ -9,7 +9,7 @@ export default function MarketingLayout({
 }) {
   return (
     <>
-      <MarketingHeader guestOnly={!isSupabaseConfigured()} />
+      <MarketingHeader guestOnly={getAccountsMode() === "none"} />
       <main className="flex-1">{children}</main>
       <SiteFooter />
     </>

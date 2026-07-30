@@ -1,3 +1,4 @@
+import { buildInterviewKnowledge } from "@/lib/ai/knowledge/select";
 import type { OrganizationRow, ProjectRow } from "@/types/database";
 import type { InterviewSummaryData } from "@/features/interviews/schema";
 
@@ -56,6 +57,11 @@ ${businessProfile}
 PROJECT REQUEST
 "${project.original_prompt}"
 ${summaryBlock}
+
+${buildInterviewKnowledge({
+  industry: organization.industry,
+  requestText: `${project.original_prompt} ${organization.description ?? ""} ${organization.biggest_problem ?? ""}`,
+})}
 
 YOUR INTERVIEW STRATEGY
 Work through these discovery areas, always choosing the question with the highest information value RIGHT NOW (skip anything already answered by the profile, the request, or the known facts):

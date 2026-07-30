@@ -1,3 +1,4 @@
+import { buildBlueprintKnowledge } from "@/lib/ai/knowledge/select";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { OrganizationRow, ProjectRow } from "@/types/database";
 
@@ -43,6 +44,13 @@ PROJECT REQUEST
 
 DISCOVERY INTERVIEW
 ${interviewText}
+
+${buildBlueprintKnowledge({
+  industry: organization.industry,
+  requestText: `${project.original_prompt} ${transcript
+    .map((message) => message.content)
+    .join(" ")}`,
+})}
 
 STRATEGY PRINCIPLES
 - Solve the stated business problem; resist gold-plating. If the owner asked for something that adds cost without value, include it as "optional" and note the trade-off in assumptions.

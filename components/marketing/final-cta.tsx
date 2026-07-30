@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utilities/cn";
 
-export function FinalCta() {
+export function FinalCta({ guestOnly }: { guestOnly: boolean }) {
   return (
     <section className="border-t border-border-subtle bg-surface-muted/40">
       <Container className="py-20 text-center sm:py-24">
@@ -17,8 +17,11 @@ export function FinalCta() {
           your business — free while Forge is in early access.
         </p>
         <div className="mt-8">
-          <Link href="/register" className={cn(buttonVariants({ size: "lg" }))}>
-            Start building
+          <Link
+            href={guestOnly ? "/try" : "/register"}
+            className={cn(buttonVariants({ size: "lg" }))}
+          >
+            {guestOnly ? "Try Forge now" : "Start building"}
             <ArrowRight aria-hidden="true" />
           </Link>
         </div>

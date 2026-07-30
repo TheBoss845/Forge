@@ -18,8 +18,10 @@ const navigation = [
   { name: "FAQ", href: "/#faq" },
 ];
 
-export function MarketingHeader() {
+export function MarketingHeader({ guestOnly }: { guestOnly: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const ctaHref = guestOnly ? "/try" : "/register";
+  const ctaLabel = guestOnly ? "Try Forge" : "Start building";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border-subtle bg-background/85 backdrop-blur-md">
@@ -46,17 +48,19 @@ export function MarketingHeader() {
 
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
+          {!guestOnly ? (
+            <Link
+              href="/login"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
+              Sign in
+            </Link>
+          ) : null}
           <Link
-            href="/login"
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/register"
+            href={ctaHref}
             className={buttonVariants({ variant: "primary", size: "sm" })}
           >
-            Start building
+            {ctaLabel}
           </Link>
         </div>
 
@@ -95,23 +99,25 @@ export function MarketingHeader() {
             </Link>
           ))}
           <div className="mt-3 flex items-center gap-3 px-3">
+            {!guestOnly ? (
+              <Link
+                href="/login"
+                className={cn(
+                  buttonVariants({ variant: "secondary", size: "sm" }),
+                  "flex-1",
+                )}
+              >
+                Sign in
+              </Link>
+            ) : null}
             <Link
-              href="/login"
-              className={cn(
-                buttonVariants({ variant: "secondary", size: "sm" }),
-                "flex-1",
-              )}
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/register"
+              href={ctaHref}
               className={cn(
                 buttonVariants({ variant: "primary", size: "sm" }),
                 "flex-1",
               )}
             >
-              Start building
+              {ctaLabel}
             </Link>
             <ThemeToggle />
           </div>

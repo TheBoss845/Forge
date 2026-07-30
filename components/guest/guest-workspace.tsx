@@ -1,7 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Bot, Send, User } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  FolderKanban,
+  Plus,
+  Send,
+  Trash2,
+  User,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -15,27 +24,25 @@ import { z } from "zod";
 import { FieldError } from "@/components/auth/field-error";
 import { GuestBlueprintView } from "@/components/guest/guest-blueprint-view";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { projectBlueprintSchema } from "@/features/blueprints/schema";
+import { guestBusinessSchema } from "@/features/guest/schema";
 import {
-  projectBlueprintSchema,
-  type ProjectBlueprint,
-} from "@/features/blueprints/schema";
-import {
-  guestBusinessSchema,
-  type GuestBusiness,
-} from "@/features/guest/schema";
-import type {
-  InterviewSummaryData,
-  InterviewTurn,
-} from "@/features/interviews/schema";
+  guestProjectStatus,
+  loadGuestStore,
+  saveGuestStore,
+  type GuestProject,
+  type GuestStore,
+} from "@/features/guest/store";
+import type { InterviewTurn } from "@/features/interviews/schema";
 import { INDUSTRIES } from "@/features/organizations/validation";
 import { cn } from "@/lib/utilities/cn";
-
-const STORAGE_KEY = "forge.guest.v1";
+import { formatRelativeTime } from "@/lib/utilities/format";
 
 const startFormSchema = guestBusinessSchema.extend({
   prompt: z
@@ -50,184 +57,147 @@ const startFormSchema = guestBusinessSchema.extend({
 
 type StartFormValues = z.infer<typeof startFormSchema>;
 
-interface GuestMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  whyThisMatters?: string;
-  suggestedAnswers?: string[];
-}
-
-interface GuestState {
-  step: "start" | "interview" | "blueprint";
-  business: GuestBusiness | null;
-  prompt: string;
-  messages: GuestMessage[];
-  summary: InterviewSummaryData | null;
-  discoveryComplete: boolean;
-  blueprint: ProjectBlueprint | null;
-}
-
-const initialState: GuestState = {
-  step: "start",
-  business: null,
-  prompt: "",
-  messages: [],
-  summary: null,
-  discoveryComplete: false,
-  blueprint: null,
-};
-
-function loadState(): GuestState {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialState;
-    const parsed = JSON.parse(raw) as GuestState;
-    if (parsed.blueprint) {
-      const valid = projectBlueprintSchema.safeParse(parsed.blueprint);
-      if (!valid.success)
-        return { ...parsed, blueprint: null, step: "interview" };
-    }
-    return { ...initialState, ...parsed };
-  } catch {
-    return initialState;
-  }
-}
-
 // localStorage acts as an external store: read once per page load on the
 // client, null during server rendering (shows the loading state).
 const emptySubscribe = () => () => {};
-let persistedSnapshot: GuestState | null = null;
-function getPersistedSnapshot(): GuestState {
-  persistedSnapshot ??= loadState();
-  return persistedSnapshot;
+let storeSnapshot: GuestStore | null = null;
+function getStoreSnapshot(): GuestStore {
+  storeSnapshot ??= loadGuestStore();
+  return storeSnapshot;
 }
 
-type StateUpdater =
-  GuestState | ((previous: GuestState | null) => GuestState | null);
+type StoreUpdater =
+  GuestStore | ((previous: GuestStore | null) => GuestStore | null);
 
 export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
   const persisted = useSyncExternalStore(
     emptySubscribe,
-    getPersistedSnapshot,
+    getStoreSnapshot,
     () => null,
   );
-  const [override, setOverride] = useState<GuestState | null>(null);
-  const state = override ?? persisted;
+  const [override, setOverride] = useState<GuestStore | null>(null);
+  const store = override ?? persisted;
 
-  const setState = useCallback((value: StateUpdater) => {
+  const setStore = useCallback((value: StoreUpdater) => {
     setOverride((previous) => {
-      const base = previous ?? persistedSnapshot;
+      const base = previous ?? storeSnapshot;
       return typeof value === "function" ? value(base) : value;
     });
   }, []);
 
-  const [input, setInput] = useState("");
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"turn" | "blueprint" | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const openingRequestedRef = useRef(false);
+  const openingRequestedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!state) return;
-    persistedSnapshot = state;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // Persistence is best-effort.
-    }
-  }, [state]);
+    if (!store) return;
+    storeSnapshot = store;
+    saveGuestStore(store);
+  }, [store]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [state?.messages.length, busy]);
+  const activeProject =
+    store?.projects.find((project) => project.id === store.activeProjectId) ??
+    null;
 
-  const requestTurn = async (current: GuestState, content: string | null) => {
-    if (!current.business) return;
-    setError(null);
-    setBusy("turn");
-
-    const nextMessages = content
-      ? [
-          ...current.messages,
-          {
-            id: `g-${Date.now()}`,
-            role: "user" as const,
-            content,
-          },
-        ]
-      : current.messages;
-    setState({ ...current, messages: nextMessages });
-
-    try {
-      const response = await fetch("/api/guest/interview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          business: current.business,
-          prompt: current.prompt,
-          transcript: nextMessages.map((message) => ({
-            role: message.role,
-            content: message.content,
-          })),
-          summary: current.summary,
-        }),
+  const updateProject = useCallback(
+    (projectId: string, patch: (project: GuestProject) => GuestProject) => {
+      setStore((previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          projects: previous.projects.map((project) =>
+            project.id === projectId ? patch(project) : project,
+          ),
+        };
       });
-      const data = (await response.json()) as {
-        error?: string;
-        turn?: InterviewTurn;
-      };
-      if (!response.ok || !data.turn) {
-        setError(data.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-      const { turn } = data;
-      setState((previous) =>
-        previous
-          ? {
-              ...previous,
-              messages: [
-                ...nextMessages,
-                {
-                  id: `g-${Date.now()}-assistant`,
-                  role: "assistant",
-                  content: turn.message,
-                  whyThisMatters: turn.whyThisMatters,
-                  suggestedAnswers: turn.suggestedAnswers,
-                },
-              ],
-              summary: turn.updatedSummary,
-              discoveryComplete:
-                previous.discoveryComplete || turn.discoveryComplete,
-            }
-          : previous,
-      );
-    } catch {
-      setError(
-        "Could not reach the server. Check your connection and try again.",
-      );
-    } finally {
-      setBusy(null);
-    }
-  };
+    },
+    [setStore],
+  );
 
-  // Ask the opening question when entering the interview with no messages.
+  const requestTurn = useCallback(
+    async (project: GuestProject, content: string | null) => {
+      setError(null);
+      setBusy("turn");
+
+      const nextMessages = content
+        ? [
+            ...project.messages,
+            { id: `g-${Date.now()}`, role: "user" as const, content },
+          ]
+        : project.messages;
+      if (content) {
+        updateProject(project.id, (current) => ({
+          ...current,
+          messages: nextMessages,
+        }));
+      }
+
+      try {
+        const response = await fetch("/api/guest/interview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business: project.business,
+            prompt: project.prompt,
+            transcript: nextMessages.map((message) => ({
+              role: message.role,
+              content: message.content,
+            })),
+            summary: project.summary,
+          }),
+        });
+        const data = (await response.json()) as {
+          error?: string;
+          turn?: InterviewTurn;
+        };
+        if (!response.ok || !data.turn) {
+          setError(data.error ?? "Something went wrong. Please try again.");
+          return;
+        }
+        const { turn } = data;
+        updateProject(project.id, (current) => ({
+          ...current,
+          messages: [
+            ...nextMessages,
+            {
+              id: `g-${Date.now()}-assistant`,
+              role: "assistant",
+              content: turn.message,
+              whyThisMatters: turn.whyThisMatters,
+              suggestedAnswers: turn.suggestedAnswers,
+            },
+          ],
+          summary: turn.updatedSummary,
+          discoveryComplete:
+            current.discoveryComplete || turn.discoveryComplete,
+        }));
+      } catch {
+        setError(
+          "Could not reach the server. Check your connection and try again.",
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [updateProject],
+  );
+
+  // Ask the opening question when a project enters the interview empty.
   useEffect(() => {
     if (
-      state &&
-      state.step === "interview" &&
-      state.messages.length === 0 &&
       aiConfigured &&
-      !openingRequestedRef.current
+      activeProject &&
+      !activeProject.blueprint &&
+      activeProject.messages.length === 0 &&
+      openingRequestedForRef.current !== activeProject.id
     ) {
-      openingRequestedRef.current = true;
-      void requestTurn(state, null);
+      openingRequestedForRef.current = activeProject.id;
+      void requestTurn(activeProject, null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when interview starts empty
-  }, [state?.step]);
+  }, [aiConfigured, activeProject, requestTurn]);
 
-  const generateBlueprint = async () => {
-    if (!state?.business) return;
+  const generateBlueprint = async (project: GuestProject) => {
     setError(null);
     setBusy("blueprint");
     try {
@@ -235,9 +205,9 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          business: state.business,
-          prompt: state.prompt,
-          transcript: state.messages.map((message) => ({
+          business: project.business,
+          prompt: project.prompt,
+          transcript: project.messages.map((message) => ({
             role: message.role,
             content: message.content,
           })),
@@ -254,11 +224,10 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
         );
         return;
       }
-      setState((previous) =>
-        previous
-          ? { ...previous, blueprint: parsed.data, step: "blueprint" }
-          : previous,
-      );
+      updateProject(project.id, (current) => ({
+        ...current,
+        blueprint: parsed.data,
+      }));
     } catch {
       setError(
         "Could not reach the server. Check your connection and try again.",
@@ -268,29 +237,17 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
     }
   };
 
-  const restart = () => {
-    openingRequestedRef.current = false;
-    setInput("");
-    setError(null);
-    setState(initialState);
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // Ignore.
-    }
-  };
-
-  if (!state) {
+  if (!store) {
     return (
       <div className="py-16 text-center text-body-sm text-muted" role="status">
-        Loading…
+        Loading your workspace…
       </div>
     );
   }
 
   if (!aiConfigured) {
     return (
-      <Alert variant="info">
+      <Alert variant="info" className="mx-auto max-w-xl">
         <p className="font-medium text-primary">
           The AI is not configured on this deployment yet.
         </p>
@@ -303,37 +260,202 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
     );
   }
 
-  if (state.step === "start") {
+  // Start form (first project, or creating another one).
+  if (creating || store.projects.length === 0) {
     return (
-      <GuestStartForm
-        onSubmit={(values) => {
-          openingRequestedRef.current = false;
-          setState({
-            ...initialState,
-            step: "interview",
-            business: {
-              businessName: values.businessName,
-              industry: values.industry,
-              description: values.description,
-              biggestProblem: values.biggestProblem,
-            },
-            prompt: values.prompt,
-          });
-        }}
-      />
+      <div>
+        {store.projects.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setCreating(false)}
+            className="mx-auto mb-6 flex items-center gap-1.5 rounded-md text-body-sm text-secondary hover:text-primary"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to your projects
+          </button>
+        ) : null}
+        <GuestStartForm
+          onSubmit={(values) => {
+            const project: GuestProject = {
+              id: `p-${Date.now()}`,
+              createdAt: new Date().toISOString(),
+              business: {
+                businessName: values.businessName,
+                industry: values.industry,
+                description: values.description,
+                biggestProblem: values.biggestProblem,
+              },
+              prompt: values.prompt,
+              messages: [],
+              summary: null,
+              discoveryComplete: false,
+              blueprint: null,
+            };
+            setCreating(false);
+            setError(null);
+            setStore((previous) => ({
+              projects: [...(previous?.projects ?? []), project],
+              activeProjectId: project.id,
+            }));
+          }}
+        />
+      </div>
     );
   }
 
-  if (state.step === "blueprint" && state.blueprint) {
+  // Project list.
+  if (!activeProject) {
     return (
-      <GuestBlueprintView blueprint={state.blueprint} onRestart={restart} />
+      <div className="mx-auto max-w-3xl">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-section-title text-primary">
+            <FolderKanban className="size-5 text-accent" aria-hidden="true" />
+            Your projects
+          </h2>
+          <Button size="sm" onClick={() => setCreating(true)}>
+            <Plus aria-hidden="true" />
+            New project
+          </Button>
+        </div>
+        <p className="mt-1 text-body-sm text-muted">
+          Saved on this device — no account needed.
+        </p>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+          {store.projects.map((project) => (
+            <li
+              key={project.id}
+              className="rounded-lg border border-border-subtle bg-surface p-5 shadow-card transition-colors hover:border-border-strong"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-card-title text-primary">
+                  {project.blueprint?.projectName ??
+                    project.business.businessName}
+                </h3>
+                <Badge variant={project.blueprint ? "success" : "accent"}>
+                  {guestProjectStatus(project)}
+                </Badge>
+              </div>
+              <p className="mt-2 line-clamp-2 text-body-sm text-secondary">
+                {project.prompt}
+              </p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-caption text-muted">
+                  Started {formatRelativeTime(project.createdAt)}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Delete ${project.business.businessName}`}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Delete this project? This cannot be undone.",
+                        )
+                      ) {
+                        setStore((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                projects: previous.projects.filter(
+                                  (item) => item.id !== project.id,
+                                ),
+                              }
+                            : previous,
+                        );
+                      }
+                    }}
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      setStore((previous) =>
+                        previous
+                          ? { ...previous, activeProjectId: project.id }
+                          : previous,
+                      )
+                    }
+                  >
+                    Open
+                    <ArrowRight aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
 
-  const lastAssistant = [...state.messages]
+  const backToProjects = () => {
+    setError(null);
+    setStore((previous) =>
+      previous ? { ...previous, activeProjectId: null } : previous,
+    );
+  };
+
+  // Blueprint view.
+  if (activeProject.blueprint) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={backToProjects}
+          className="mb-4 flex items-center gap-1.5 rounded-md text-body-sm text-secondary hover:text-primary"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Your projects
+        </button>
+        <GuestBlueprintView
+          blueprint={activeProject.blueprint}
+          onRestart={backToProjects}
+        />
+      </div>
+    );
+  }
+
+  // Interview view.
+  return (
+    <GuestInterview
+      project={activeProject}
+      busy={busy}
+      error={error}
+      onBack={backToProjects}
+      onAnswer={(content) => void requestTurn(activeProject, content)}
+      onGenerate={() => void generateBlueprint(activeProject)}
+    />
+  );
+}
+
+function GuestInterview({
+  project,
+  busy,
+  error,
+  onBack,
+  onAnswer,
+  onGenerate,
+}: {
+  project: GuestProject;
+  busy: "turn" | "blueprint" | null;
+  error: string | null;
+  onBack: () => void;
+  onAnswer: (content: string) => void;
+  onGenerate: () => void;
+}) {
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [project.messages.length, busy]);
+
+  const lastAssistant = [...project.messages]
     .reverse()
     .find((message) => message.role === "assistant");
-  const answersGiven = state.messages.filter(
+  const answersGiven = project.messages.filter(
     (message) => message.role === "user",
   ).length;
 
@@ -341,189 +463,202 @@ export function GuestWorkspace({ aiConfigured }: { aiConfigured: boolean }) {
     const content = input.trim();
     if (!content || busy) return;
     setInput("");
-    void requestTurn(state, content);
+    onAnswer(content);
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <section
-        aria-label="Interview conversation"
-        className="flex min-h-[26rem] flex-col rounded-lg border border-border-subtle bg-surface shadow-card lg:col-span-2"
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 flex items-center gap-1.5 rounded-md text-body-sm text-secondary hover:text-primary"
       >
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          {state.messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "flex gap-3",
-                message.role === "user" && "flex-row-reverse",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full",
-                  message.role === "assistant"
-                    ? "bg-accent-muted"
-                    : "bg-surface-muted",
-                )}
-              >
-                {message.role === "assistant" ? (
-                  <Bot className="size-3.5 text-accent" aria-hidden="true" />
-                ) : (
-                  <User
-                    className="size-3.5 text-secondary"
-                    aria-hidden="true"
-                  />
-                )}
-              </span>
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-lg px-4 py-3",
-                  message.role === "assistant"
-                    ? "rounded-tl-none border border-border-subtle"
-                    : "rounded-tr-none bg-surface-muted",
-                )}
-              >
-                <p className="text-body-sm whitespace-pre-wrap text-primary">
-                  {message.content}
-                </p>
-                {message.whyThisMatters ? (
-                  <p className="mt-2 text-caption text-muted">
-                    {message.whyThisMatters}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Your projects
+      </button>
 
-          {busy ? (
-            <div className="flex items-center gap-3" role="status">
-              <span className="flex size-7 items-center justify-center rounded-full bg-accent-muted">
-                <Bot className="size-3.5 text-accent" aria-hidden="true" />
-              </span>
-              <span className="text-body-sm text-muted">
-                {busy === "blueprint"
-                  ? "Forge is drawing up your blueprint — up to a minute…"
-                  : "Forge is thinking…"}
-              </span>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section
+          aria-label="Interview conversation"
+          className="flex min-h-[26rem] flex-col rounded-lg border border-border-subtle bg-surface shadow-card lg:col-span-2"
+        >
+          <div className="flex-1 space-y-5 overflow-y-auto p-5">
+            {project.messages.map((message) => (
+              <div
+                key={message.id}
+                className={cn(
+                  "flex gap-3",
+                  message.role === "user" && "flex-row-reverse",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-full",
+                    message.role === "assistant"
+                      ? "bg-accent-muted"
+                      : "bg-surface-muted",
+                  )}
+                >
+                  {message.role === "assistant" ? (
+                    <Bot className="size-3.5 text-accent" aria-hidden="true" />
+                  ) : (
+                    <User
+                      className="size-3.5 text-secondary"
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-4 py-3",
+                    message.role === "assistant"
+                      ? "rounded-tl-none border border-border-subtle"
+                      : "rounded-tr-none bg-surface-muted",
+                  )}
+                >
+                  <p className="text-body-sm whitespace-pre-wrap text-primary">
+                    {message.content}
+                  </p>
+                  {message.whyThisMatters ? (
+                    <p className="mt-2 text-caption text-muted">
+                      {message.whyThisMatters}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+
+            {busy ? (
+              <div className="flex items-center gap-3" role="status">
+                <span className="flex size-7 items-center justify-center rounded-full bg-accent-muted">
+                  <Bot className="size-3.5 text-accent" aria-hidden="true" />
+                </span>
+                <span className="text-body-sm text-muted">
+                  {busy === "blueprint"
+                    ? "Forge is drawing up your blueprint — up to a minute…"
+                    : "Forge is thinking…"}
+                </span>
+              </div>
+            ) : null}
+
+            {error ? <Alert variant="danger">{error}</Alert> : null}
+            <div ref={bottomRef} />
+          </div>
+
+          {lastAssistant?.suggestedAnswers?.length && !busy ? (
+            <div className="flex flex-wrap gap-2 border-t border-border-subtle px-5 py-3">
+              {lastAssistant.suggestedAnswers.map((answer) => (
+                <button
+                  key={answer}
+                  type="button"
+                  onClick={() => onAnswer(answer)}
+                  className="rounded-full border border-border-subtle px-3 py-1.5 text-body-sm text-secondary transition-colors hover:border-accent hover:text-accent"
+                >
+                  {answer}
+                </button>
+              ))}
             </div>
           ) : null}
 
-          {error ? <Alert variant="danger">{error}</Alert> : null}
-          <div ref={bottomRef} />
-        </div>
-
-        {lastAssistant?.suggestedAnswers?.length && !busy ? (
-          <div className="flex flex-wrap gap-2 border-t border-border-subtle px-5 py-3">
-            {lastAssistant.suggestedAnswers.map((answer) => (
-              <button
-                key={answer}
+          <div className="border-t border-border-subtle p-4">
+            <div className="flex items-end gap-2">
+              <label htmlFor="guest-input" className="sr-only">
+                Your answer
+              </label>
+              <Textarea
+                id="guest-input"
+                rows={2}
+                value={input}
+                placeholder="Type your answer…"
+                disabled={Boolean(busy)}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <Button
                 type="button"
-                onClick={() => void requestTurn(state, answer)}
-                className="rounded-full border border-border-subtle px-3 py-1.5 text-body-sm text-secondary transition-colors hover:border-accent hover:text-accent"
+                size="icon"
+                onClick={handleSend}
+                disabled={Boolean(busy) || !input.trim()}
+                aria-label="Send answer"
               >
-                {answer}
-              </button>
-            ))}
+                <Send aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="mt-3 flex items-center justify-end">
+              <Button
+                type="button"
+                variant={project.discoveryComplete ? "primary" : "secondary"}
+                size="sm"
+                disabled={Boolean(busy) || answersGiven < 1}
+                onClick={onGenerate}
+              >
+                {busy === "blueprint" ? "Generating…" : "Generate my blueprint"}
+                <ArrowRight aria-hidden="true" />
+              </Button>
+            </div>
           </div>
-        ) : null}
+        </section>
 
-        <div className="border-t border-border-subtle p-4">
-          <div className="flex items-end gap-2">
-            <label htmlFor="guest-input" className="sr-only">
-              Your answer
-            </label>
-            <Textarea
-              id="guest-input"
-              rows={2}
-              value={input}
-              placeholder="Type your answer…"
-              disabled={Boolean(busy)}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              size="icon"
-              onClick={handleSend}
-              disabled={Boolean(busy) || !input.trim()}
-              aria-label="Send answer"
-            >
-              <Send aria-hidden="true" />
-            </Button>
-          </div>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={restart}
-              className="rounded-md text-body-sm text-muted hover:text-primary"
-            >
-              Start over
-            </button>
-            <Button
-              type="button"
-              variant={state.discoveryComplete ? "primary" : "secondary"}
-              size="sm"
-              disabled={Boolean(busy) || answersGiven < 1}
-              onClick={generateBlueprint}
-            >
-              {busy === "blueprint" ? "Generating…" : "Generate my blueprint"}
-              <ArrowRight aria-hidden="true" />
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <aside
-        aria-label="Business understanding"
-        className="rounded-lg border border-border-subtle bg-surface p-5 shadow-card"
-      >
-        <h2 className="text-card-title text-primary">What Forge knows</h2>
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-caption text-muted">
-            <span>Discovery progress</span>
-            <span>{state.summary?.progressPercent ?? 0}%</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={state.summary?.progressPercent ?? 0}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Discovery progress"
-            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted"
-          >
+        <aside
+          aria-label="Business understanding"
+          className="rounded-lg border border-border-subtle bg-surface p-5 shadow-card"
+        >
+          <h2 className="text-card-title text-primary">What Forge knows</h2>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-caption text-muted">
+              <span>Discovery progress</span>
+              <span>{project.summary?.progressPercent ?? 0}%</span>
+            </div>
             <div
-              className="h-full rounded-full bg-accent transition-[width] duration-500"
-              style={{ width: `${state.summary?.progressPercent ?? 0}%` }}
-            />
+              role="progressbar"
+              aria-valuenow={project.summary?.progressPercent ?? 0}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Discovery progress"
+              className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted"
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-500"
+                style={{ width: `${project.summary?.progressPercent ?? 0}%` }}
+              />
+            </div>
           </div>
-        </div>
-        {state.summary?.knownFacts.length ? (
-          <ul className="mt-4 space-y-2">
-            {state.summary.knownFacts.map((fact) => (
-              <li key={fact} className="flex gap-2 text-body-sm text-secondary">
-                <span
-                  aria-hidden="true"
-                  className="mt-1 size-1.5 shrink-0 rounded-full bg-success"
-                />
-                {fact}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-4 text-body-sm text-muted">
-            Facts appear here as you answer.
-          </p>
-        )}
-      </aside>
+          {project.summary?.knownFacts.length ? (
+            <ul className="mt-4 space-y-2">
+              {project.summary.knownFacts.map((fact) => (
+                <li
+                  key={fact}
+                  className="flex gap-2 text-body-sm text-secondary"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 size-1.5 shrink-0 rounded-full bg-success"
+                  />
+                  {fact}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-body-sm text-muted">
+              Facts appear here as you answer.
+            </p>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
+
+const examplePrompts = [
+  "I own a veterinary clinic and need customers to book appointments online.",
+  "We're a construction company and need to track job quotes and progress.",
+  "Our retail store needs an inventory dashboard with low-stock alerts.",
+];
 
 function GuestStartForm({
   onSubmit,
@@ -533,6 +668,7 @@ function GuestStartForm({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<StartFormValues>({ resolver: zodResolver(startFormSchema) });
 
@@ -612,6 +748,20 @@ function GuestStartForm({
           {...register("prompt")}
         />
         <FieldError id="prompt-error" message={errors.prompt?.message} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {examplePrompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() =>
+                setValue("prompt", prompt, { shouldValidate: true })
+              }
+              className="rounded-full border border-border-subtle px-3 py-1.5 text-caption text-secondary transition-colors hover:border-accent hover:text-accent"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex justify-end">
         <Button type="submit" size="lg">

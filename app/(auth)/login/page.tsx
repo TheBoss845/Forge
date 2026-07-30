@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AuthFormShell } from "@/components/auth/auth-form-shell";
+import { LocalModeCard } from "@/components/auth/local-mode-card";
 import { LoginForm } from "@/components/auth/login-form";
 import { Alert } from "@/components/ui/alert";
 import { isSupabaseConfigured } from "@/lib/database/env";
@@ -14,6 +15,10 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const configured = isSupabaseConfigured();
+
+  if (!configured) {
+    return <LocalModeCard />;
+  }
 
   return (
     <AuthFormShell

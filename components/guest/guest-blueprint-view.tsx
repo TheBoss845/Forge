@@ -52,7 +52,7 @@ export function GuestBlueprintView({
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onRestart}>
             <RotateCcw aria-hidden="true" />
-            Start over
+            Back to projects
           </Button>
           <Button size="sm" onClick={download} disabled={downloading}>
             <Download aria-hidden="true" />

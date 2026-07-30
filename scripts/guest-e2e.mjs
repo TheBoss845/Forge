@@ -71,5 +71,26 @@ await page.reload({ waitUntil: "networkidle" });
 const persisted = await page.getByText("Guest Vet Booking").first().isVisible();
 console.log("state persisted after reload:", persisted);
 
+// 9. Back to the project list: the project shows as a card.
+await page.getByRole("button", { name: "Back to projects" }).click();
+await page.waitForSelector("text=Your projects", { timeout: 10000 });
+const badge = await page.getByText("Blueprint ready").first().isVisible();
+const newProject = await page
+  .getByRole("button", { name: "New project" })
+  .isVisible();
+console.log("project list:", badge, "| new project button:", newProject);
+await page.screenshot({ path: "/tmp/forge-shots/guest-4-projects.png" });
+
+// 10. Reopen the project from the list.
+await page.getByRole("button", { name: "Open" }).first().click();
+await page.waitForSelector("text=Guest Vet Booking", { timeout: 10000 });
+console.log("project reopened from list");
+
+// 11. Login page should offer the device workspace, not a dead form.
+await page.goto("http://localhost:3000/login", { waitUntil: "networkidle" });
+const localMode = await page.getByText("No sign-in needed here").isVisible();
+console.log("login page shows device-workspace doorway:", localMode);
+await page.screenshot({ path: "/tmp/forge-shots/guest-5-login.png" });
+
 console.log("page errors:", errors.length === 0 ? "none" : errors);
 await browser.close();

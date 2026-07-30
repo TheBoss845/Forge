@@ -14,7 +14,9 @@ const examplePrompts = [
   "I need an inventory dashboard for my three retail stores.",
 ];
 
-export function Hero() {
+export function Hero({ guestOnly }: { guestOnly: boolean }) {
+  const primaryHref = guestOnly ? "/try" : "/register";
+  const primaryLabel = guestOnly ? "Try Forge now" : "Start building";
   return (
     <section className="relative overflow-hidden">
       {/* Restrained decorative layer: faint dot grid + one soft ember glow. */}
@@ -48,10 +50,10 @@ export function Hero() {
           </p>
           <div className="mt-8 flex animate-fade-up flex-col items-center justify-center gap-3 [animation-delay:240ms] sm:flex-row">
             <Link
-              href="/register"
+              href={primaryHref}
               className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
             >
-              Start building
+              {primaryLabel}
               <ArrowRight aria-hidden="true" />
             </Link>
             <Link
@@ -64,6 +66,19 @@ export function Hero() {
               View example project
             </Link>
           </div>
+          <p className="mt-4 animate-fade-up text-body-sm text-secondary [animation-delay:280ms]">
+            {guestOnly ? (
+              "No account needed — your work stays in your browser."
+            ) : (
+              <>
+                Or{" "}
+                <Link href="/try" className="text-accent hover:underline">
+                  try it instantly without an account
+                </Link>
+                .
+              </>
+            )}
+          </p>
 
           <div className="mt-10 animate-fade-up [animation-delay:320ms]">
             <p className="text-caption font-medium tracking-wide text-muted uppercase">

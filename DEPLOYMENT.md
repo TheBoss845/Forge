@@ -1,17 +1,47 @@
 # Publishing Forge — a plain-English guide
 
 This guide takes you from the code in this repository to a real website that
-anyone can visit. No prior experience needed. Total time: about 30–45
-minutes, and everything here has a free tier — you can launch without paying
-anything.
+anyone can visit. No prior experience needed. Everything here has a free
+tier — you can launch without paying anything.
 
-You will set up three things:
+## The 15-minute version: OpenAI key only, no database
+
+With exactly ONE secret, a Forge deployment on Netlify gives visitors the
+full experience — **including working sign-up and sign-in**:
+
+- Visitors can use Forge instantly with no account (`/try`), with projects
+  saved in their own browser.
+- Visitors can also **create a real account** (email + password) and their
+  projects follow them to any device they sign in on. This works because
+  Forge uses Netlify's built-in storage (Netlify Blobs) — part of the
+  hosting platform itself, nothing extra to sign up for, on the free tier.
+- Passwords are properly hashed (never stored readable); sessions are
+  secure cookies. Honest limitation: password-reset emails are not
+  available in this mode (that needs an email service), and the sign-in
+  pages say so.
+
+Steps:
+
+1. Get an OpenAI API key (Part 2 below, ~5 minutes).
+2. Deploy to Netlify (Part 3 below, ~10 minutes) and add just one
+   environment variable: name it `OPENAI_API_KEY` (or `AI_API_KEY` — both
+   work), value = your key. Forge assumes OpenAI and the `gpt-4o` model
+   unless you also set `AI_PROVIDER` / `AI_MODEL`.
+3. Deploy. Done — a real, working AI product with working accounts.
+
+Add **Supabase** later (Part 1) whenever you want the full cloud workspace
+(organizations, the dashboard, password reset, teams). Nothing breaks in
+the meantime; Forge upgrades itself when the keys appear.
+
+---
+
+## The full version: accounts + database + AI
+
+Set up three things:
 
 1. **Supabase** — the database where accounts and projects live.
 2. **An AI key** — what powers the interview and blueprints.
 3. **Netlify** — the service that puts the website on the internet.
-
-Do them in this order.
 
 ---
 
@@ -91,12 +121,17 @@ code, only paste it into Netlify's environment variables (next part).
 
    | Name                            | Value                                  |
    | ------------------------------- | -------------------------------------- |
-   | `NEXT_PUBLIC_SUPABASE_URL`      | your Project URL from Part 1           |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your anon public key from Part 1       |
-   | `AI_PROVIDER`                   | `openai` or `anthropic`                |
-   | `AI_MODEL`                      | `gpt-4o` or `claude-sonnet-4-5`        |
-   | `AI_API_KEY`                    | your secret AI key from Part 2         |
+   | `OPENAI_API_KEY`                | your secret AI key from Part 2         |
+   | `NEXT_PUBLIC_SUPABASE_URL`      | (optional) Project URL from Part 1     |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (optional) anon public key from Part 1 |
    | `NEXT_PUBLIC_APP_URL`           | your site address — see the note below |
+
+   Naming notes: the AI key can be `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+   or the generic `AI_API_KEY` — Forge understands all three and infers the
+   provider. Set `AI_PROVIDER` / `AI_MODEL` only if you want something other
+   than the defaults (`openai` / `gpt-4o`). The two Supabase variables are
+   only needed for accounts and saved projects; without them Forge runs in
+   guest mode.
 
    Note on `NEXT_PUBLIC_APP_URL`: you won't know your site's address until
    Netlify creates it. Skip it for now, and come back to fill it in during

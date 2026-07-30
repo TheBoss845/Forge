@@ -25,8 +25,13 @@ generation from approved blueprints is the next phase.
 - **Blueprint workspace** — validated, versioned blueprints across 13
   sections with read-only rendering, direct section editing (validated
   before save), AI-powered revision, version history, and approval.
-- **Honest states everywhere** — when Supabase or the AI provider is not
-  configured, the affected screens say exactly that. Nothing is simulated.
+- **Built-in accounts on Netlify** — with no database at all, visitors can
+  still create real accounts (email + password, scrypt-hashed, signed
+  session cookies) backed by Netlify Blobs, and their projects sync across
+  devices. Falls back to device-only workspaces when no storage exists;
+  upgrades to full Supabase auth when a database is configured.
+- **Honest states everywhere** — when a capability is missing, the affected
+  screens say exactly that. Nothing is simulated.
 
 - **Interactive prototype** — the builder renders a live, clickable
   prototype of the planned application straight from the blueprint: real

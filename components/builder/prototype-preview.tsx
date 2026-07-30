@@ -66,8 +66,9 @@ export function PrototypePreview({
         </p>
         <p className="mt-1">
           The screens, navigation, roles, and fields are your real plan. The
-          data shown is sample data, and nothing you type here is saved. Code
-          generation is the next phase of Forge.
+          data shown is sample data, and nothing you type here is saved. When
+          you like the shape of it, generate the real starter codebase from the
+          Code tab.
         </p>
       </Alert>
 

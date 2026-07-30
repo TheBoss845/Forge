@@ -6,6 +6,7 @@ import {
   type DisplayMessage,
 } from "@/components/interview/interview-panel";
 import { ProjectPageHeader } from "@/components/projects/project-page-header";
+import { ProjectTabs } from "@/components/projects/project-tabs";
 import { interviewSummarySchema } from "@/features/interviews/schema";
 import { getProject } from "@/features/projects/queries";
 import { isAiConfigured } from "@/lib/ai";
@@ -65,6 +66,7 @@ export default async function InterviewPage({
         project={project}
         subtitle="Forge is learning about your business before it plans anything."
       />
+      <ProjectTabs projectId={project.id} />
       <InterviewPanel
         projectId={project.id}
         initialMessages={messages}

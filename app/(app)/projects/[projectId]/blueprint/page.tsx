@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { BlueprintWorkspace } from "@/components/blueprint/blueprint-workspace";
 import { GenerateBlueprintCard } from "@/components/blueprint/generate-blueprint-card";
 import { ProjectPageHeader } from "@/components/projects/project-page-header";
+import { ProjectTabs } from "@/components/projects/project-tabs";
 import { Alert } from "@/components/ui/alert";
 import { projectBlueprintSchema } from "@/features/blueprints/schema";
 import { listBlueprintVersions } from "@/features/blueprints/queries";
@@ -38,6 +39,7 @@ export default async function BlueprintPage({
           project={project}
           subtitle="Turn the discovery interview into a complete project plan."
         />
+        <ProjectTabs projectId={project.id} />
         <GenerateBlueprintCard
           projectId={project.id}
           aiConfigured={isAiConfigured()}
@@ -60,6 +62,7 @@ export default async function BlueprintPage({
         project={project}
         subtitle="Review, edit, and approve the plan before anything gets built."
       />
+      <ProjectTabs projectId={project.id} />
       {parsed.success ? (
         <BlueprintWorkspace
           projectId={project.id}

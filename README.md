@@ -9,7 +9,7 @@ editable, versioned project blueprint — users, roles, features, pages, data
 models, workflows, integrations, and security requirements. Application
 generation from approved blueprints is the next phase.
 
-## What works today (Phase 1)
+## What works today
 
 - **Marketing site** — landing page with product explanation, examples,
   security overview, pricing preview, and FAQ.
@@ -31,8 +31,21 @@ generation from approved blueprints is the next phase.
 - **Interactive prototype** — the builder renders a live, clickable
   prototype of the planned application straight from the blueprint: real
   pages, navigation, role switching, and forms/tables derived from your data
-  models (clearly labeled as sample data). Code generation itself is Phase 2
-  and the UI says so honestly.
+  models (clearly labeled as sample data).
+- **Application generation (Phase 2)** — template-based generation turns the
+  blueprint into a complete, runnable Next.js starter: one page per
+  blueprint page, navigation, typed data models, sample data, and a
+  ready-to-apply PostgreSQL schema. Browse the files in the Code tab and
+  download the project as a ZIP. Deterministic and verified — the generated
+  example app builds cleanly.
+- **AI code modification (Phase 3)** — ask Forge to change a generated file
+  in plain language, review a line-by-line diff before anything is saved,
+  then apply it. Every generation, edit, and restore creates an immutable
+  version snapshot with one-click rollback.
+- **Deployment preparation (Phase 4)** — a guided Deploy tab: download,
+  host on Netlify/Vercel, and connect real data, with an environment
+  checklist derived from the blueprint's integrations. One-click deployment
+  from inside Forge is future work and is labeled as such.
 
 ## Publishing
 
@@ -157,10 +170,10 @@ Key decisions:
 
 ## Roadmap
 
-| Phase                                       | Status      |
-| ------------------------------------------- | ----------- |
-| 1. Discovery + blueprints (this)            | ✅ Complete |
-| 2. Template-based application generation    | Planned     |
-| 3. AI code modification with diffs/versions | Planned     |
-| 4. Deployment (Vercel/Netlify + Supabase)   | Planned     |
-| 5. Advanced multi-agent generation          | Planned     |
+| Phase                                       | Status                              |
+| ------------------------------------------- | ----------------------------------- |
+| 1. Discovery + blueprints                   | ✅ Complete                         |
+| 2. Template-based application generation    | ✅ Complete (sample-data starters)  |
+| 3. AI code modification with diffs/versions | ✅ Complete (file-level edits)      |
+| 4. Deployment                               | ◐ Guided deployment (one-click TBD) |
+| 5. Advanced multi-agent generation          | Planned                             |

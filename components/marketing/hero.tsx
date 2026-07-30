@@ -17,24 +17,36 @@ const examplePrompts = [
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
+      {/* Restrained decorative layer: faint dot grid + one soft ember glow. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)] opacity-40"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute top-[-12rem] left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl"
+      />
       <div
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
       />
-      <Container className="pt-16 pb-20 sm:pt-24 sm:pb-28">
+      <Container className="relative pt-16 pb-20 sm:pt-24 sm:pb-28">
         <div className="mx-auto max-w-3xl text-center">
-          <Badge variant="accent">
-            <Sparkles className="size-3" aria-hidden="true" />
-            AI software engineering for every business
-          </Badge>
-          <h1 className="mt-6 text-display text-primary sm:text-[4rem] sm:leading-[1.05]">
-            Tell Forge what your business needs. Watch it become software.
+          <div className="animate-fade-up">
+            <Badge variant="accent">
+              <Sparkles className="size-3" aria-hidden="true" />
+              AI software engineering for every business
+            </Badge>
+          </div>
+          <h1 className="mt-6 animate-fade-up text-display text-primary [animation-delay:80ms] sm:text-[4rem] sm:leading-[1.05]">
+            Tell Forge what your business needs.{" "}
+            <span className="text-accent">Watch it become software.</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-body text-secondary sm:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl animate-fade-up text-body text-secondary [animation-delay:160ms] sm:text-lg">
             Forge interviews you, designs your system, creates the application,
             and helps you launch it. No development team required.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-8 flex animate-fade-up flex-col items-center justify-center gap-3 [animation-delay:240ms] sm:flex-row">
             <Link
               href="/register"
               className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
@@ -43,7 +55,7 @@ export function Hero() {
               <ArrowRight aria-hidden="true" />
             </Link>
             <Link
-              href="/#examples"
+              href="/demo"
               className={cn(
                 buttonVariants({ variant: "secondary", size: "lg" }),
                 "w-full sm:w-auto",
@@ -53,7 +65,7 @@ export function Hero() {
             </Link>
           </div>
 
-          <div className="mt-10">
+          <div className="mt-10 animate-fade-up [animation-delay:320ms]">
             <p className="text-caption font-medium tracking-wide text-muted uppercase">
               Businesses start with prompts like
             </p>
@@ -70,7 +82,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="mt-16 sm:mt-20">
+        <div className="mt-16 animate-fade-up [animation-delay:400ms] sm:mt-20">
           <DemoMockup />
         </div>
       </Container>

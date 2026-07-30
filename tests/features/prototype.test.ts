@@ -104,6 +104,36 @@ describe("matchDataModel", () => {
     expect(model?.name).toBe("Appointment");
   });
 
+  it("prefers page-name matches over purpose-text matches", () => {
+    // "Book appointment" page mentions "Customers" only in its purpose;
+    // the Appointment model must still win via the page name.
+    const model = matchDataModel(blueprint, blueprint.pages[0]);
+    expect(model?.name).toBe("Appointment");
+  });
+
+  it("matches through model descriptions", () => {
+    const visitPage = {
+      name: "Book a visit",
+      route: "/book",
+      purpose: "Customers pick a time",
+      allowedRoles: [],
+      components: ["Booking form"],
+    };
+    const withDescription = {
+      ...blueprint,
+      dataModels: [
+        blueprint.dataModels[1],
+        {
+          ...blueprint.dataModels[0],
+          name: "Appointment",
+          description: "A scheduled visit",
+        },
+      ],
+    };
+    const model = matchDataModel(withDescription, visitPage);
+    expect(model?.name).toBe("Appointment");
+  });
+
   it("returns null when there are no models", () => {
     const empty = { ...blueprint, dataModels: [] };
     expect(matchDataModel(empty, blueprint.pages[0])).toBeNull();

@@ -28,8 +28,17 @@ generation from approved blueprints is the next phase.
 - **Honest states everywhere** — when Supabase or the AI provider is not
   configured, the affected screens say exactly that. Nothing is simulated.
 
-The builder (application generation) screen exists but clearly states that
-generation is not available yet. That is Phase 2.
+- **Interactive prototype** — the builder renders a live, clickable
+  prototype of the planned application straight from the blueprint: real
+  pages, navigation, role switching, and forms/tables derived from your data
+  models (clearly labeled as sample data). Code generation itself is Phase 2
+  and the UI says so honestly.
+
+## Publishing
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for a complete plain-English guide to
+putting Forge on the internet with Netlify (or Vercel), Supabase, and an AI
+provider — including every environment variable and the auth URL setup.
 
 ## Technology
 

@@ -1,0 +1,10 @@
+# Netlify configuration for Forge (Next.js).
+# The @netlify/plugin-nextjs runtime is applied automatically by Netlify for
+# Next.js projects; declaring it here makes the setup explicit.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
